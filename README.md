@@ -4,14 +4,14 @@ PrepGPT is an interview simulation web app. It generates tailored interview ques
 
 ## Features
 
-- Input resume and job description via text paste **or** `.txt/.md` upload.
+- Input resume and job description via text paste **or** `.txt/.md/.pdf` upload.
 - Choose number of interview questions by category using sliders:
   - Behavioral
   - Technical
   - Situational
   - Motivational
 - Generate questions privately (not shown until simulation starts).
-- Record one answer per question, with retry and next flow.
+- Record one answer per question, with retry and next flow, live recording indicator, and timer.
 - Automatic speech-to-text transcription via OpenAI.
 - Detailed per-question feedback, transcripts, and overall score.
 

@@ -8,7 +8,9 @@ const state = {
   audioChunks: [],
   currentAudioBlob: null,
   resumeText: '',
-  jobDescriptionText: ''
+  jobDescriptionText: '',
+  recordingSeconds: 0,
+  timerInterval: null
 };
 
 const setupScreen = document.getElementById('setup-screen');
@@ -25,6 +27,7 @@ const jdFileInput = document.getElementById('job-description-file');
 const slidersContainer = document.getElementById('sliders');
 const prepareBtn = document.getElementById('prepare-btn');
 const startSimulationBtn = document.getElementById('start-simulation-btn');
+const restartBtn = document.getElementById('restart-btn');
 
 const questionTitle = document.getElementById('question-title');
 const questionMeta = document.getElementById('question-meta');
@@ -35,12 +38,19 @@ const stopBtn = document.getElementById('stop-btn');
 const retryBtn = document.getElementById('retry-btn');
 const nextBtn = document.getElementById('next-btn');
 
+const recordDot = document.getElementById('record-dot');
+const recordText = document.getElementById('record-text');
+const recordTimer = document.getElementById('record-timer');
+
 const audioPreview = document.getElementById('audio-preview');
 const transcriptStatus = document.getElementById('transcript-status');
 const answerTranscript = document.getElementById('answer-transcript');
 
 const overallScore = document.getElementById('overall-score');
 const overallFeedback = document.getElementById('overall-feedback');
+const scoreRing = document.getElementById('score-ring');
+const categoryBars = document.getElementById('category-bars');
+const distribution = document.getElementById('distribution');
 const detailedResults = document.getElementById('detailed-results');
 
 function showScreen(screen) {
@@ -80,6 +90,52 @@ function collectCategoryCounts() {
   }, {});
 }
 
+function toTimer(totalSeconds) {
+  const mins = String(Math.floor(totalSeconds / 60)).padStart(2, '0');
+  const secs = String(totalSeconds % 60).padStart(2, '0');
+  return `${mins}:${secs}`;
+}
+
+function startTimerUI() {
+  state.recordingSeconds = 0;
+  recordDot.classList.remove('hidden');
+  recordDot.classList.add('active');
+  recordText.textContent = 'Recording in progress';
+  recordTimer.textContent = '00:00';
+
+  state.timerInterval = setInterval(() => {
+    state.recordingSeconds += 1;
+    recordTimer.textContent = toTimer(state.recordingSeconds);
+  }, 1000);
+}
+
+function stopTimerUI() {
+  if (state.timerInterval) {
+    clearInterval(state.timerInterval);
+    state.timerInterval = null;
+  }
+  recordDot.classList.remove('active');
+  recordDot.classList.add('hidden');
+  recordText.textContent = 'Not recording';
+}
+
+async function extractPdfText(file) {
+  const module = await import('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.8.69/pdf.min.mjs');
+  const pdfjsLib = module.default || module;
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const pdf = await pdfjsLib.getDocument({ data: bytes }).promise;
+  const parts = [];
+
+  for (let pageNum = 1; pageNum <= pdf.numPages; pageNum += 1) {
+    const page = await pdf.getPage(pageNum);
+    const text = await page.getTextContent();
+    const textItems = text.items.map((item) => item.str).join(' ');
+    parts.push(textItems);
+  }
+
+  return parts.join('\n').trim();
+}
+
 async function getInputText(textarea, fileInput, inputName) {
   const typedText = textarea.value.trim();
   const file = fileInput.files?.[0];
@@ -92,9 +148,18 @@ async function getInputText(textarea, fileInput, inputName) {
     return '';
   }
 
+  const lowerName = file.name.toLowerCase();
+  if (lowerName.endsWith('.pdf') || file.type === 'application/pdf') {
+    const pdfText = await extractPdfText(file);
+    if (!pdfText) {
+      throw new Error(`${inputName} PDF appears empty. Please paste text manually.`);
+    }
+    return pdfText;
+  }
+
   const isTextLike = file.type.startsWith('text/') || /\.(txt|md)$/i.test(file.name);
   if (!isTextLike) {
-    throw new Error(`${inputName} file must be a plain text file (.txt or .md).`);
+    throw new Error(`${inputName} file must be .txt, .md, or .pdf.`);
   }
 
   const content = await file.text();
@@ -158,7 +223,11 @@ function renderCurrentQuestion() {
   answerTranscript.value = '';
   transcriptStatus.textContent = 'Record your answer, then transcribe or edit it before moving on.';
   nextBtn.disabled = true;
+  nextBtn.textContent = state.currentIndex === state.questions.length - 1 ? 'See Answers' : 'Next Question';
   state.currentAudioBlob = null;
+
+  stopTimerUI();
+  recordTimer.textContent = '00:00';
 
   audioPreview.classList.add('hidden');
   audioPreview.removeAttribute('src');
@@ -185,6 +254,7 @@ async function startRecording() {
     };
 
     state.mediaRecorder.start();
+    startTimerUI();
     recordBtn.disabled = true;
     stopBtn.disabled = false;
     transcriptStatus.textContent = 'Recording...';
@@ -197,6 +267,7 @@ async function startRecording() {
 function stopRecording() {
   if (state.mediaRecorder && state.mediaRecorder.state === 'recording') {
     state.mediaRecorder.stop();
+    stopTimerUI();
     recordBtn.disabled = false;
     stopBtn.disabled = true;
     transcriptStatus.textContent = 'Transcribing...';
@@ -255,6 +326,52 @@ function retryQuestion() {
   answerTranscript.value = '';
   nextBtn.disabled = true;
   transcriptStatus.textContent = 'Retry: record your answer again.';
+  stopTimerUI();
+  recordTimer.textContent = '00:00';
+}
+
+function scoreBadgeClass(score) {
+  if (score >= 75) return 'badge-high';
+  if (score >= 50) return 'badge-mid';
+  return 'badge-low';
+}
+
+function renderCategoryBars(results) {
+  const scoresByCategory = {};
+  categories.forEach((category) => {
+    const items = results.filter((result) => result.category === category);
+    if (items.length > 0) {
+      const avg = Math.round(items.reduce((sum, item) => sum + item.score, 0) / items.length);
+      scoresByCategory[category] = avg;
+    }
+  });
+
+  categoryBars.innerHTML = '';
+  Object.entries(scoresByCategory).forEach(([category, score]) => {
+    const row = document.createElement('div');
+    row.className = 'bar-row';
+    row.innerHTML = `
+      <div class="bar-head"><span>${category}</span><strong>${score}/100</strong></div>
+      <div class="bar-track"><div class="bar-fill" style="width:${score}%"></div></div>
+    `;
+    categoryBars.appendChild(row);
+  });
+}
+
+function renderDistribution(results) {
+  const buckets = {
+    'Strong (75-100)': results.filter((result) => result.score >= 75).length,
+    'Developing (50-74)': results.filter((result) => result.score >= 50 && result.score < 75).length,
+    'Needs Work (<50)': results.filter((result) => result.score < 50).length
+  };
+
+  distribution.innerHTML = '';
+  Object.entries(buckets).forEach(([label, count]) => {
+    const chip = document.createElement('span');
+    chip.className = 'dist-chip';
+    chip.textContent = `${label}: ${count}`;
+    distribution.appendChild(chip);
+  });
 }
 
 async function analyzeInterview() {
@@ -285,19 +402,30 @@ async function analyzeInterview() {
 }
 
 function renderResults(data) {
-  overallScore.textContent = `Overall Interview Score: ${data.overallScore}/100`;
+  const totalScore = Number(data.overallScore) || 0;
+  overallScore.textContent = `${totalScore}/100`;
   overallFeedback.textContent = data.overallFeedback;
+
+  const ringDeg = Math.round((Math.max(0, Math.min(100, totalScore)) / 100) * 360);
+  scoreRing.style.background = `conic-gradient(var(--primary) ${ringDeg}deg, #e7ebff ${ringDeg}deg)`;
 
   detailedResults.innerHTML = '';
 
-  (data.results || []).forEach((result, index) => {
+  const results = data.results || [];
+  renderCategoryBars(results);
+  renderDistribution(results);
+
+  results.forEach((result, index) => {
     const item = document.createElement('article');
     item.className = 'result-item';
 
     const tips = (result.improvementTips || []).map((tip) => `<li>${tip}</li>`).join('');
 
     item.innerHTML = `
-      <h4>Q${index + 1} (${result.category}) - Score: ${result.score}/100</h4>
+      <h4>
+        Q${index + 1} (${result.category})
+        <span class="score-badge ${scoreBadgeClass(result.score)}">${result.score}/100</span>
+      </h4>
       <p><strong>Question:</strong> ${result.question}</p>
       <p><strong>Transcript:</strong> ${result.transcript}</p>
       <p><strong>Feedback:</strong> ${result.feedback}</p>
@@ -311,11 +439,23 @@ function renderResults(data) {
   showScreen(resultsScreen);
 }
 
+function restartFlow() {
+  state.questions = [];
+  state.answers = [];
+  state.currentIndex = 0;
+  state.resumeText = '';
+  state.jobDescriptionText = '';
+  answerTranscript.value = '';
+  stopTimerUI();
+  showScreen(setupScreen);
+}
+
 prepareBtn.addEventListener('click', prepareInterview);
 startSimulationBtn.addEventListener('click', () => {
   showScreen(questionScreen);
   renderCurrentQuestion();
 });
+restartBtn.addEventListener('click', restartFlow);
 
 recordBtn.addEventListener('click', startRecording);
 stopBtn.addEventListener('click', stopRecording);
