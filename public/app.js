@@ -50,6 +50,13 @@ const profileRole = document.getElementById('profile-role');
 const saveProfileBtn = document.getElementById('save-profile-btn');
 const sessionHistory = document.getElementById('session-history');
 
+const setupProfileName = document.getElementById('setup-profile-name');
+const setupProfileHeadline = document.getElementById('setup-profile-headline');
+const setupProfileRole = document.getElementById('setup-profile-role');
+const setupSaveProfileBtn = document.getElementById('setup-save-profile-btn');
+const setupSessionHistory = document.getElementById('setup-session-history');
+const setupProgressHistory = document.getElementById('setup-progress-history');
+
 const resumeTextarea = document.getElementById('resume');
 const resumeFileInput = document.getElementById('resume-file');
 const jdTextarea = document.getElementById('job-description');
@@ -206,20 +213,35 @@ function logout() {
 
 function hydrateProfileInputs() {
   if (!state.currentUser) return;
-  profileName.value = state.currentUser.name || '';
-  profileHeadline.value = state.currentUser.headline || '';
-  profileRole.value = state.currentUser.targetRole || '';
+  const name = state.currentUser.name || '';
+  const headline = state.currentUser.headline || '';
+  const role = state.currentUser.targetRole || '';
+
+  profileName.value = name;
+  profileHeadline.value = headline;
+  profileRole.value = role;
+
+  if (setupProfileName) setupProfileName.value = name;
+  if (setupProfileHeadline) setupProfileHeadline.value = headline;
+  if (setupProfileRole) setupProfileRole.value = role;
+
   renderSessionHistory();
   renderProgressHistory();
+  renderSetupHistory();
 }
 
 function saveProfile() {
+  const nextName = (setupProfileName?.value || profileName.value).trim();
+  const nextHeadline = (setupProfileHeadline?.value || profileHeadline.value).trim();
+  const nextRole = (setupProfileRole?.value || profileRole.value).trim();
+
   updateCurrentUser((user) => ({
     ...user,
-    name: profileName.value.trim() || user.name,
-    headline: profileHeadline.value.trim(),
-    targetRole: profileRole.value.trim()
+    name: nextName || user.name,
+    headline: nextHeadline,
+    targetRole: nextRole
   }));
+  hydrateProfileInputs();
   alert('Profile updated.');
 }
 
@@ -360,7 +382,6 @@ function renderCurrentQuestion() {
   questionTitle.textContent = `Question ${state.currentIndex + 1} of ${state.questions.length}`;
   questionMeta.textContent = `Category: ${questionObj.category}${questionObj.isFollowUp ? ' • Adaptive follow-up' : ''}`;
   currentQuestion.textContent = questionObj.question;
-  starHelper.classList.toggle('hidden', questionObj.category !== 'Behavioral');
 
   answerTranscript.value = '';
   transcriptStatus.textContent = 'Record your answer, then transcribe or edit it before moving on.';
@@ -590,6 +611,23 @@ function renderProgressHistory() {
   progressHistory.innerHTML = `<div class="mini-chart">${bars}</div><p class="meta">Latest score: ${sessions[0].overallScore}/100</p>`;
 }
 
+
+function renderSetupHistory() {
+  const sessions = state.currentUser?.sessions || [];
+  if (!setupSessionHistory || !setupProgressHistory) return;
+
+  if (!sessions.length) {
+    setupSessionHistory.innerHTML = '<p class="meta">No sessions yet. Complete an interview to see your history.</p>';
+    setupProgressHistory.innerHTML = '<p class="meta">No score trend yet.</p>';
+    return;
+  }
+
+  setupSessionHistory.innerHTML = `<ul>${sessions.slice(0, 6).map((s) => `<li>${new Date(s.at).toLocaleString()} — <strong>${s.overallScore}/100</strong> (${s.questions} questions)</li>`).join('')}</ul>`;
+  const recent = sessions.slice(0, 10).reverse();
+  const bars = recent.map((s) => `<span class="mini-bar" style="height:${Math.max(8, s.overallScore)}px" title="${s.overallScore}"></span>`).join('');
+  setupProgressHistory.innerHTML = `<div class="mini-chart">${bars}</div><p class="meta">Latest score: ${sessions[0].overallScore}/100</p>`;
+}
+
 async function analyzeInterview() {
   showScreen(loadingScreen);
   try {
@@ -696,6 +734,7 @@ loginBtn.addEventListener('click', handleLogin);
 signupBtn.addEventListener('click', handleSignup);
 logoutBtn.addEventListener('click', logout);
 saveProfileBtn.addEventListener('click', saveProfile);
+if (setupSaveProfileBtn) setupSaveProfileBtn.addEventListener('click', saveProfile);
 
 prepareBtn.addEventListener('click', prepareInterview);
 startSimulationBtn.addEventListener('click', () => {

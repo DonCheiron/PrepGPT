@@ -430,3 +430,8 @@ input[type='text'] {
 #progress-history li {
   margin-bottom: 0.3rem;
 }
+
+
+.setup-dashboard {
+  margin-top: 1rem;
+}

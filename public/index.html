@@ -80,6 +80,26 @@
         </label>
 
         <button id="prepare-btn">Prepare for Interview</button>
+
+        <div class="viz-grid setup-dashboard">
+          <div class="viz-card">
+            <h4>Your Profile</h4>
+            <label>Name</label>
+            <input id="setup-profile-name" type="text" />
+            <label>Headline</label>
+            <input id="setup-profile-headline" type="text" placeholder="Aspiring Product Manager" />
+            <label>Target Role</label>
+            <input id="setup-profile-role" type="text" placeholder="Senior Software Engineer" />
+            <button id="setup-save-profile-btn" class="btn-secondary">Save Profile</button>
+          </div>
+          <div class="viz-card">
+            <h4>Your Historical Interviews</h4>
+            <div id="setup-session-history"></div>
+            <h4>Score Trend</h4>
+            <div id="setup-progress-history"></div>
+          </div>
+        </div>
+
       </section>
 
       <section id="instruction-screen" class="card hidden">
@@ -95,7 +115,7 @@
         <p class="meta" id="question-meta"></p>
         <p id="current-question"></p>
 
-        <div id="star-helper" class="helper-box hidden">
+        <div id="star-helper" class="helper-box">
           <h4>Behavioral Framework Helper (STAR)</h4>
           <ul>
             <li><strong>S:</strong> Situation and context in 1–2 lines</li>
