@@ -119,9 +119,24 @@ function stopTimerUI() {
   recordText.textContent = 'Not recording';
 }
 
+let pdfJsLibPromise = null;
+
+async function getPdfJsLib() {
+  if (!pdfJsLibPromise) {
+    pdfJsLibPromise = import('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.8.69/pdf.min.mjs').then((module) => {
+      const pdfjsLib = module.default || module;
+      if (pdfjsLib?.GlobalWorkerOptions) {
+        pdfjsLib.GlobalWorkerOptions.workerSrc =
+          'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.8.69/pdf.worker.min.mjs';
+      }
+      return pdfjsLib;
+    });
+  }
+  return pdfJsLibPromise;
+}
+
 async function extractPdfText(file) {
-  const module = await import('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.8.69/pdf.min.mjs');
-  const pdfjsLib = module.default || module;
+  const pdfjsLib = await getPdfJsLib();
   const bytes = new Uint8Array(await file.arrayBuffer());
   const pdf = await pdfjsLib.getDocument({ data: bytes }).promise;
   const parts = [];
