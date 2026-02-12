@@ -13,11 +13,20 @@
 
       <section id="setup-screen" class="card">
         <h2>Interview Setup</h2>
-        <label for="resume">1) Resume</label>
-        <textarea id="resume" rows="8" placeholder="Paste your resume here..."></textarea>
 
-        <label for="job-description">2) Job Description</label>
-        <textarea id="job-description" rows="8" placeholder="Paste the job description here..."></textarea>
+        <div class="input-block">
+          <label>1) Resume</label>
+          <p class="input-help">Upload a text file or paste text manually.</p>
+          <input id="resume-file" type="file" accept=".txt,.md,text/plain" />
+          <textarea id="resume" rows="8" placeholder="Or paste your resume text here..."></textarea>
+        </div>
+
+        <div class="input-block">
+          <label>2) Job Description</label>
+          <p class="input-help">Upload a text file or paste text manually.</p>
+          <input id="job-description-file" type="file" accept=".txt,.md,text/plain" />
+          <textarea id="job-description" rows="8" placeholder="Or paste the job description text here..."></textarea>
+        </div>
 
         <h3>3) Number of questions per category</h3>
         <div id="sliders"></div>

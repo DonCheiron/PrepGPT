@@ -45,6 +45,20 @@ label {
   margin-bottom: 0.4rem;
 }
 
+.input-block {
+  margin-bottom: 1rem;
+}
+
+.input-help {
+  margin: 0 0 0.5rem;
+  color: #4d5670;
+  font-size: 0.9rem;
+}
+
+input[type='file'] {
+  margin-bottom: 0.6rem;
+}
+
 textarea {
   width: 100%;
   border: 1px solid #cfd6e5;

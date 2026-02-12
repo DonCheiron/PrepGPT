@@ -6,7 +6,9 @@ const state = {
   currentIndex: 0,
   mediaRecorder: null,
   audioChunks: [],
-  currentAudioBlob: null
+  currentAudioBlob: null,
+  resumeText: '',
+  jobDescriptionText: ''
 };
 
 const setupScreen = document.getElementById('setup-screen');
@@ -14,6 +16,11 @@ const instructionScreen = document.getElementById('instruction-screen');
 const questionScreen = document.getElementById('question-screen');
 const loadingScreen = document.getElementById('loading-screen');
 const resultsScreen = document.getElementById('results-screen');
+
+const resumeTextarea = document.getElementById('resume');
+const resumeFileInput = document.getElementById('resume-file');
+const jdTextarea = document.getElementById('job-description');
+const jdFileInput = document.getElementById('job-description-file');
 
 const slidersContainer = document.getElementById('sliders');
 const prepareBtn = document.getElementById('prepare-btn');
@@ -73,46 +80,69 @@ function collectCategoryCounts() {
   }, {});
 }
 
+async function getInputText(textarea, fileInput, inputName) {
+  const typedText = textarea.value.trim();
+  const file = fileInput.files?.[0];
+
+  if (typedText) {
+    return typedText;
+  }
+
+  if (!file) {
+    return '';
+  }
+
+  const isTextLike = file.type.startsWith('text/') || /\.(txt|md)$/i.test(file.name);
+  if (!isTextLike) {
+    throw new Error(`${inputName} file must be a plain text file (.txt or .md).`);
+  }
+
+  const content = await file.text();
+  return content.trim();
+}
+
 async function prepareInterview() {
-  const resume = document.getElementById('resume').value.trim();
-  const jobDescription = document.getElementById('job-description').value.trim();
   const categoryCounts = collectCategoryCounts();
-
   const totalQuestions = Object.values(categoryCounts).reduce((sum, count) => sum + count, 0);
-
-  if (!resume || !jobDescription) {
-    alert('Please provide both resume and job description.');
-    return;
-  }
-
-  if (totalQuestions === 0) {
-    alert('Please choose at least 1 question across all categories.');
-    return;
-  }
 
   prepareBtn.disabled = true;
   prepareBtn.textContent = 'Preparing...';
 
   try {
+    const resume = await getInputText(resumeTextarea, resumeFileInput, 'Resume');
+    const jobDescription = await getInputText(jdTextarea, jdFileInput, 'Job description');
+
+    if (!resume || !jobDescription) {
+      alert('Please provide both resume and job description (either by file upload or text).');
+      return;
+    }
+
+    if (totalQuestions === 0) {
+      alert('Please choose at least 1 question across all categories.');
+      return;
+    }
+
     const response = await fetch('/api/generate-questions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ resume, jobDescription, categories: categoryCounts })
     });
 
+    const data = await response.json();
     if (!response.ok) {
-      throw new Error('Could not prepare interview questions.');
+      throw new Error(data.error || 'Could not prepare interview questions.');
     }
 
-    const data = await response.json();
     state.questions = data.questions;
     state.answers = [];
     state.currentIndex = 0;
+    state.resumeText = resume;
+    state.jobDescriptionText = jobDescription;
 
     showScreen(instructionScreen);
   } catch (error) {
     console.error(error);
-    alert('Failed to prepare interview. Please try again.');
+    alert(error.message || 'Failed to prepare interview. Please try again.');
   } finally {
     prepareBtn.disabled = false;
     prepareBtn.textContent = 'Prepare for Interview';
@@ -183,12 +213,12 @@ async function transcribeAudio() {
 
   try {
     const response = await fetch('/api/transcribe', { method: 'POST', body: formData });
+    const data = await response.json();
 
     if (!response.ok) {
-      throw new Error('Transcription request failed.');
+      throw new Error(data.error || 'Transcription request failed.');
     }
 
-    const data = await response.json();
     answerTranscript.value = data.transcript || '';
     transcriptStatus.textContent = 'Transcription ready. You can edit before continuing.';
     nextBtn.disabled = answerTranscript.value.trim().length === 0;
@@ -230,25 +260,26 @@ function retryQuestion() {
 async function analyzeInterview() {
   showScreen(loadingScreen);
 
-  const resume = document.getElementById('resume').value.trim();
-  const jobDescription = document.getElementById('job-description').value.trim();
-
   try {
     const response = await fetch('/api/analyze-interview', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ resume, jobDescription, qaPairs: state.answers })
+      body: JSON.stringify({
+        resume: state.resumeText,
+        jobDescription: state.jobDescriptionText,
+        qaPairs: state.answers
+      })
     });
 
+    const data = await response.json();
     if (!response.ok) {
-      throw new Error('Failed to analyze interview.');
+      throw new Error(data.error || 'Failed to analyze interview.');
     }
 
-    const data = await response.json();
     renderResults(data);
   } catch (error) {
     console.error(error);
-    alert('Interview analysis failed. Please try again.');
+    alert(error.message || 'Interview analysis failed. Please try again.');
     showScreen(questionScreen);
   }
 }
