@@ -40,6 +40,11 @@
         <h3>3) Number of questions per category</h3>
         <div id="sliders"></div>
 
+        <label class="toggle-row">
+          <input id="dynamic-followups" type="checkbox" checked />
+          <span>Enable adaptive follow-up questions (dynamic interviewer mode)</span>
+        </label>
+
         <button id="prepare-btn">Prepare for Interview</button>
       </section>
 
@@ -56,7 +61,17 @@
         <p class="meta" id="question-meta"></p>
         <p id="current-question"></p>
 
-        <div class="record-status" id="record-status" aria-live="polite">
+        <div id="star-helper" class="helper-box hidden">
+          <h4>Behavioral Framework Helper (STAR)</h4>
+          <ul>
+            <li><strong>S:</strong> Situation and context in 1–2 lines</li>
+            <li><strong>T:</strong> Task/goal you owned</li>
+            <li><strong>A:</strong> Action you personally took</li>
+            <li><strong>R:</strong> Result with metrics and impact</li>
+          </ul>
+        </div>
+
+        <div class="record-status" aria-live="polite">
           <span id="record-dot" class="record-dot hidden"></span>
           <span id="record-text">Not recording</span>
           <span id="record-timer">00:00</span>
@@ -77,6 +92,16 @@
         </div>
       </section>
 
+      <section id="coaching-screen" class="card hidden">
+        <h2>Answer Coaching Pass</h2>
+        <p>Before final scoring, review quick coaching notes and optionally refine your transcript wording.</p>
+        <div id="coaching-list"></div>
+        <div class="actions">
+          <button id="back-to-questions-btn" class="btn-secondary">Back to Last Question</button>
+          <button id="analyze-btn">Analyze Interview</button>
+        </div>
+      </section>
+
       <section id="loading-screen" class="card hidden">
         <h2>Analyzing your interview...</h2>
         <p>Please wait while PrepGPT evaluates your answers.</p>
@@ -85,7 +110,10 @@
       <section id="results-screen" class="card hidden">
         <div class="results-header">
           <h2>Interview Results</h2>
-          <button id="restart-btn" class="btn-secondary">Back to Start</button>
+          <div class="actions">
+            <button id="export-report-btn">Export PDF Report</button>
+            <button id="restart-btn" class="btn-secondary">Back to Start</button>
+          </div>
         </div>
 
         <div class="results-hero">
@@ -98,6 +126,7 @@
           <div class="overall-copy">
             <h3>Your performance snapshot</h3>
             <p id="overall-feedback"></p>
+            <p id="next-step-plan" class="meta"></p>
           </div>
         </div>
 
@@ -110,13 +139,17 @@
             <h4>Score Distribution</h4>
             <div id="distribution"></div>
           </div>
+          <div class="viz-card">
+            <h4>Progress Over Time</h4>
+            <div id="progress-history"></div>
+          </div>
         </div>
 
         <div id="detailed-results"></div>
       </section>
     </main>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.8.69/pdf.min.mjs" type="module"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="app.js"></script>
   </body>
 </html>

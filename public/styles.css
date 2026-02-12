@@ -326,3 +326,72 @@ button:disabled {
     grid-template-columns: 1fr;
   }
 }
+
+.toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin: 0.9rem 0;
+  font-weight: 600;
+}
+
+.helper-box {
+  background: #f8f9ff;
+  border: 1px solid #e4e8fb;
+  border-radius: 12px;
+  padding: 0.65rem 0.85rem;
+  margin: 0.7rem 0;
+}
+
+.helper-box h4 {
+  margin: 0.2rem 0;
+}
+
+.helper-box ul {
+  margin: 0.35rem 0;
+  padding-left: 1rem;
+}
+
+.rubric-list {
+  margin: 0.4rem 0;
+  padding-left: 1rem;
+}
+
+.hl-strong {
+  background: #dcfce7;
+  color: #14532d;
+  border-radius: 5px;
+  padding: 0 0.15rem;
+}
+
+.hl-weak {
+  background: #fee2e2;
+  color: #7f1d1d;
+  border-radius: 5px;
+  padding: 0 0.15rem;
+}
+
+.transcript-html {
+  line-height: 1.7;
+}
+
+.mini-chart {
+  height: 80px;
+  display: flex;
+  align-items: flex-end;
+  gap: 0.3rem;
+  margin-bottom: 0.6rem;
+}
+
+.mini-bar {
+  width: 16px;
+  border-radius: 6px 6px 0 0;
+  background: linear-gradient(180deg, #7c3aed, #5a67ff);
+}
+
+@media (max-width: 760px) {
+  .viz-grid,
+  .results-hero {
+    grid-template-columns: 1fr;
+  }
+}
