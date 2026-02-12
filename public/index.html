@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PrepGPT - Interview Simulation</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="container">
+      <h1>PrepGPT</h1>
+      <p class="subtitle">Prepare for your interview with an AI-powered simulation.</p>
+
+      <section id="setup-screen" class="card">
+        <h2>Interview Setup</h2>
+        <label for="resume">1) Resume</label>
+        <textarea id="resume" rows="8" placeholder="Paste your resume here..."></textarea>
+
+        <label for="job-description">2) Job Description</label>
+        <textarea id="job-description" rows="8" placeholder="Paste the job description here..."></textarea>
+
+        <h3>3) Number of questions per category</h3>
+        <div id="sliders"></div>
+
+        <button id="prepare-btn">Prepare for Interview</button>
+      </section>
+
+      <section id="instruction-screen" class="card hidden">
+        <h2>Simulation Ready</h2>
+        <p>
+          Please take this simulation seriously, as if you were in a real interview. Record each answer clearly and completely.
+        </p>
+        <button id="start-simulation-btn">Start Simulation</button>
+      </section>
+
+      <section id="question-screen" class="card hidden">
+        <h2 id="question-title">Question</h2>
+        <p class="meta" id="question-meta"></p>
+        <p id="current-question"></p>
+
+        <div class="record-controls">
+          <button id="record-btn">Start Recording</button>
+          <button id="stop-btn" disabled>Stop Recording</button>
+        </div>
+
+        <audio id="audio-preview" controls class="hidden"></audio>
+        <p id="transcript-status"></p>
+        <textarea id="answer-transcript" rows="6" placeholder="Transcript will appear here after recording..."></textarea>
+
+        <div class="actions">
+          <button id="retry-btn">Retry Question</button>
+          <button id="next-btn" disabled>Next Question</button>
+        </div>
+      </section>
+
+      <section id="loading-screen" class="card hidden">
+        <h2>Analyzing your interview...</h2>
+        <p>Please wait while PrepGPT evaluates your answers.</p>
+      </section>
+
+      <section id="results-screen" class="card hidden">
+        <h2>Interview Results</h2>
+        <p id="overall-score"></p>
+        <p id="overall-feedback"></p>
+        <div id="detailed-results"></div>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>
