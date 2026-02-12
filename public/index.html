@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PrepGPT - Interview Simulation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="bg-orb orb-1"></div>
+    <div class="bg-orb orb-2"></div>
+
+    <main class="container">
+      <section class="hero card glass">
+        <span class="pill">AI Interview Coach</span>
+        <h1>PrepGPT</h1>
+        <p class="subtitle">Train like it’s real. Get hard, honest, and actionable interview feedback.</p>
+      </section>
+
+      <section id="setup-screen" class="card">
+        <h2>Interview Setup</h2>
+
+        <div class="input-block">
+          <label>1) Resume</label>
+          <p class="input-help">Upload a <strong>.txt</strong>, <strong>.md</strong>, or <strong>.pdf</strong> file — or paste text manually.</p>
+          <input id="resume-file" type="file" accept=".txt,.md,.pdf,text/plain,application/pdf" />
+          <textarea id="resume" rows="8" placeholder="Or paste your resume text here..."></textarea>
+        </div>
+
+        <div class="input-block">
+          <label>2) Job Description</label>
+          <p class="input-help">Upload a <strong>.txt</strong>, <strong>.md</strong>, or <strong>.pdf</strong> file — or paste text manually.</p>
+          <input id="job-description-file" type="file" accept=".txt,.md,.pdf,text/plain,application/pdf" />
+          <textarea id="job-description" rows="8" placeholder="Or paste the job description text here..."></textarea>
+        </div>
+
+        <h3>3) Number of questions per category</h3>
+        <div id="sliders"></div>
+
+        <label class="toggle-row">
+          <input id="dynamic-followups" type="checkbox" checked />
+          <span>Enable adaptive follow-up questions (dynamic interviewer mode)</span>
+        </label>
+
+        <button id="prepare-btn">Prepare for Interview</button>
+      </section>
+
+      <section id="instruction-screen" class="card hidden">
+        <h2>Simulation Ready</h2>
+        <p>
+          Please take this simulation seriously, as if you were in a real interview. Record each answer clearly and completely.
+        </p>
+        <button id="start-simulation-btn">Start Simulation</button>
+      </section>
+
+      <section id="question-screen" class="card hidden">
+        <h2 id="question-title">Question</h2>
+        <p class="meta" id="question-meta"></p>
+        <p id="current-question"></p>
+
+        <div id="star-helper" class="helper-box hidden">
+          <h4>Behavioral Framework Helper (STAR)</h4>
+          <ul>
+            <li><strong>S:</strong> Situation and context in 1–2 lines</li>
+            <li><strong>T:</strong> Task/goal you owned</li>
+            <li><strong>A:</strong> Action you personally took</li>
+            <li><strong>R:</strong> Result with metrics and impact</li>
+          </ul>
+        </div>
+
+        <div class="record-status" aria-live="polite">
+          <span id="record-dot" class="record-dot hidden"></span>
+          <span id="record-text">Not recording</span>
+          <span id="record-timer">00:00</span>
+        </div>
+
+        <div class="record-controls">
+          <button id="record-btn">Start Recording</button>
+          <button id="stop-btn" disabled>Stop Recording</button>
+        </div>
+
+        <audio id="audio-preview" controls class="hidden"></audio>
+        <p id="transcript-status"></p>
+        <textarea id="answer-transcript" rows="6" placeholder="Transcript will appear here after recording..."></textarea>
+
+        <div class="actions">
+          <button id="retry-btn" class="btn-secondary">Retry Question</button>
+          <button id="next-btn" disabled>Next Question</button>
+        </div>
+      </section>
+
+      <section id="coaching-screen" class="card hidden">
+        <h2>Answer Coaching Pass</h2>
+        <p>Before final scoring, review quick coaching notes and optionally refine your transcript wording.</p>
+        <div id="coaching-list"></div>
+        <div class="actions">
+          <button id="back-to-questions-btn" class="btn-secondary">Back to Last Question</button>
+          <button id="analyze-btn">Analyze Interview</button>
+        </div>
+      </section>
+
+      <section id="loading-screen" class="card hidden">
+        <h2>Analyzing your interview...</h2>
+        <p>Please wait while PrepGPT evaluates your answers.</p>
+      </section>
+
+      <section id="results-screen" class="card hidden">
+        <div class="results-header">
+          <h2>Interview Results</h2>
+          <div class="actions">
+            <button id="export-report-btn">Export PDF Report</button>
+            <button id="restart-btn" class="btn-secondary">Back to Start</button>
+          </div>
+        </div>
+
+        <div class="results-hero">
+          <div class="score-ring" id="score-ring">
+            <div>
+              <p class="score-ring-label">Overall Score</p>
+              <p class="score-ring-value" id="overall-score">--</p>
+            </div>
+          </div>
+          <div class="overall-copy">
+            <h3>Your performance snapshot</h3>
+            <p id="overall-feedback"></p>
+            <p id="next-step-plan" class="meta"></p>
+          </div>
+        </div>
+
+        <div class="viz-grid">
+          <div class="viz-card">
+            <h4>Category Breakdown</h4>
+            <div id="category-bars"></div>
+          </div>
+          <div class="viz-card">
+            <h4>Score Distribution</h4>
+            <div id="distribution"></div>
+          </div>
+          <div class="viz-card">
+            <h4>Progress Over Time</h4>
+            <div id="progress-history"></div>
+          </div>
+        </div>
+
+        <div id="detailed-results"></div>
+      </section>
+    </main>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
