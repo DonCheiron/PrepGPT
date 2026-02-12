@@ -395,3 +395,38 @@ button:disabled {
     grid-template-columns: 1fr;
   }
 }
+
+input[type='email'],
+input[type='password'],
+input[type='text'] {
+  width: 100%;
+  border: 1px solid #cfd6e5;
+  border-radius: 12px;
+  padding: 0.75rem;
+  font-size: 0.94rem;
+  margin-bottom: 0.6rem;
+}
+
+.auth-tabs {
+  display: flex;
+  gap: 0.6rem;
+  margin: 0.8rem 0;
+}
+
+.auth-panel {
+  background: #f8f9ff;
+  border: 1px solid #e4e8fb;
+  border-radius: 12px;
+  padding: 0.9rem;
+}
+
+#session-history ul,
+#progress-history ul {
+  margin: 0.4rem 0;
+  padding-left: 1rem;
+}
+
+#session-history li,
+#progress-history li {
+  margin-bottom: 0.3rem;
+}

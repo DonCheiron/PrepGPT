@@ -20,8 +20,42 @@
         <p class="subtitle">Train like it’s real. Get hard, honest, and actionable interview feedback.</p>
       </section>
 
-      <section id="setup-screen" class="card">
-        <h2>Interview Setup</h2>
+      <section id="auth-screen" class="card">
+        <h2>Welcome to PrepGPT</h2>
+        <p class="meta">Create an account or log in to keep your profile and historical interview trends.</p>
+
+        <div class="auth-tabs">
+          <button id="show-login-btn" class="btn-secondary">Log In</button>
+          <button id="show-signup-btn">Sign Up</button>
+        </div>
+
+        <div id="login-panel" class="auth-panel">
+          <label>Email</label>
+          <input id="login-email" type="email" placeholder="you@example.com" />
+          <label>Password</label>
+          <input id="login-password" type="password" placeholder="••••••••" />
+          <button id="login-btn">Log In</button>
+        </div>
+
+        <div id="signup-panel" class="auth-panel hidden">
+          <label>Full Name</label>
+          <input id="signup-name" type="text" placeholder="Jane Doe" />
+          <label>Email</label>
+          <input id="signup-email" type="email" placeholder="you@example.com" />
+          <label>Password</label>
+          <input id="signup-password" type="password" placeholder="Create a password" />
+          <button id="signup-btn">Create Account</button>
+        </div>
+      </section>
+
+      <section id="setup-screen" class="card hidden">
+        <div class="results-header">
+          <h2>Interview Setup</h2>
+          <div class="actions">
+            <span id="user-chip" class="dist-chip"></span>
+            <button id="logout-btn" class="btn-secondary">Log Out</button>
+          </div>
+        </div>
 
         <div class="input-block">
           <label>1) Resume</label>
@@ -116,6 +150,24 @@
           </div>
         </div>
 
+        <div class="viz-grid">
+          <div class="viz-card">
+            <h4>Profile Details</h4>
+            <label>Name</label>
+            <input id="profile-name" type="text" />
+            <label>Headline</label>
+            <input id="profile-headline" type="text" placeholder="Aspiring Product Manager" />
+            <label>Target Role</label>
+            <input id="profile-role" type="text" placeholder="Senior Software Engineer" />
+            <button id="save-profile-btn" class="btn-secondary">Save Profile</button>
+          </div>
+
+          <div class="viz-card">
+            <h4>Historical Interview Sessions</h4>
+            <div id="session-history"></div>
+          </div>
+        </div>
+
         <div class="results-hero">
           <div class="score-ring" id="score-ring">
             <div>
@@ -140,7 +192,7 @@
             <div id="distribution"></div>
           </div>
           <div class="viz-card">
-            <h4>Progress Over Time</h4>
+            <h4>Historical Score Trend</h4>
             <div id="progress-history"></div>
           </div>
         </div>
