@@ -18,7 +18,7 @@ if (!hasApiKey) {
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY || 'missing-key' });
 
 app.use(express.static('public'));
-app.use(express.json({ limit: '4mb' }));
+app.use(express.json({ limit: '2mb' }));
 
 function generateFallbackQuestions(categories = {}) {
   const bank = {
@@ -50,60 +50,14 @@ function generateFallbackQuestions(categories = {}) {
     const wanted = Math.max(0, Number(count) || 0);
     for (let i = 0; i < wanted; i += 1) {
       const list = bank[category] || [`Give an example response for a ${category} interview question.`];
-      questions.push({ category, question: list[i % list.length] });
+      questions.push({
+        category,
+        question: list[i % list.length]
+      });
     }
   });
 
   return questions;
-}
-
-function evaluateTranscript(transcript = '') {
-  const text = transcript.trim();
-  const words = text.split(/\s+/).filter(Boolean);
-  const wordCount = words.length;
-  const lower = text.toLowerCase();
-
-  const hasSituation = /(situation|context|when|at the time|project)/.test(lower);
-  const hasTask = /(task|goal|objective|responsible)/.test(lower);
-  const hasAction = /(i did|i built|i led|implemented|designed|debugged|created|improved|migrated|optimized)/.test(lower);
-  const hasResult = /(result|outcome|impact|improved|reduced|increased|saved|delivered|launched)/.test(lower);
-  const hasMetric = /(\d+%|\d+\s*(ms|sec|seconds|minutes|hours|days|weeks|months|users|customers|tickets|bugs|k|m))/i.test(text);
-  const fillerCount = (lower.match(/\b(um|uh|like|you know|basically|kind of|sort of)\b/g) || []).length;
-
-  let score = 20;
-
-  if (wordCount >= 30) score += 10;
-  if (wordCount >= 70) score += 10;
-  if (wordCount >= 120) score += 8;
-  if (wordCount >= 220) score += 6;
-
-  if (hasSituation) score += 8;
-  if (hasTask) score += 8;
-  if (hasAction) score += 12;
-  if (hasResult) score += 14;
-  if (hasMetric) score += 12;
-
-  score -= Math.min(12, fillerCount * 2);
-
-  if (wordCount < 20) score -= 18;
-  if (!hasAction) score -= 12;
-  if (!hasResult) score -= 10;
-
-  score = Math.max(18, Math.min(92, score));
-
-  const improvementTips = [];
-  if (!hasSituation || !hasTask) improvementTips.push('Open with situation + goal so the interviewer has context.');
-  if (!hasAction) improvementTips.push('Emphasize specific actions you personally took, not just team outcomes.');
-  if (!hasResult) improvementTips.push('Close with outcomes and what changed because of your work.');
-  if (!hasMetric) improvementTips.push('Add concrete metrics (%, time saved, quality improvements) to strengthen credibility.');
-  if (wordCount < 50) improvementTips.push('Expand your answer with more detail and structure (STAR format).');
-  if (improvementTips.length === 0) improvementTips.push('Great structure—tighten clarity and keep answers concise under time pressure.');
-
-  let feedback = 'Good baseline answer, but there is room to improve structure and impact clarity.';
-  if (score >= 75) feedback = 'Strong answer with good structure and clear impact. Tighten phrasing for maximum confidence.';
-  else if (score < 50) feedback = 'Answer needs more structure and specificity. Use STAR and add measurable outcomes.';
-
-  return { score, feedback, improvementTips };
 }
 
 app.post('/api/generate-questions', async (req, res) => {
@@ -192,14 +146,19 @@ app.post('/api/analyze-interview', async (req, res) => {
 
     if (!hasApiKey) {
       const results = qaPairs.map((qa) => {
-        const evaluated = evaluateTranscript(qa.transcript);
+        const lengthScore = Math.min(100, Math.max(45, Math.round((qa.transcript.length / 300) * 100)));
         return {
           category: qa.category,
           question: qa.question,
           transcript: qa.transcript,
-          score: evaluated.score,
-          feedback: evaluated.feedback,
-          improvementTips: evaluated.improvementTips
+          score: lengthScore,
+          feedback:
+            'Fallback analysis mode: your answer has been scored based on clarity/length proxy. Add STAR structure for stronger responses.',
+          improvementTips: [
+            'State the context and your objective first.',
+            'Describe concrete actions you personally took.',
+            'End with measurable outcomes and lessons learned.'
+          ]
         };
       });
 
@@ -207,9 +166,7 @@ app.post('/api/analyze-interview', async (req, res) => {
       return res.json({
         overallScore,
         overallFeedback:
-          overallScore >= 75
-            ? 'Solid overall performance. Keep answers concise and evidence-backed.'
-            : 'Your interview needs stronger structure and measurable impact in each response.',
+          'Fallback analysis mode (no OpenAI key). Configure OPENAI_API_KEY for full AI-based personalized feedback.',
         results,
         source: 'fallback'
       });
@@ -221,7 +178,7 @@ app.post('/api/analyze-interview', async (req, res) => {
         {
           role: 'system',
           content:
-            'You are a strict senior interview evaluator. Be realistic and critical. Most average answers should score between 45 and 70. Return only valid JSON with this exact format: {"overallScore": number,"overallFeedback": string,"results":[{"category":string,"question":string,"transcript":string,"score":number,"feedback":string,"improvementTips":[string]}]}. Scores are 0-100 and must clearly reflect answer quality.'
+            'You are a senior interview evaluator. Return only valid JSON with this exact format: {"overallScore": number,"overallFeedback": string,"results":[{"category":string,"question":string,"transcript":string,"score":number,"feedback":string,"improvementTips":[string]}]}. Scores are 0-100.'
         },
         {
           role: 'user',
@@ -231,32 +188,7 @@ app.post('/api/analyze-interview', async (req, res) => {
     });
 
     const parsed = JSON.parse(response.output_text);
-
-    const calibratedResults = (parsed.results || []).map((item) => {
-      const local = evaluateTranscript(item.transcript || '');
-      const modelScore = Number(item.score) || 0;
-      const blended = Math.round(modelScore * 0.6 + local.score * 0.4);
-      const score = Math.max(20, Math.min(95, blended));
-
-      return {
-        ...item,
-        score,
-        improvementTips:
-          Array.isArray(item.improvementTips) && item.improvementTips.length > 0 ? item.improvementTips : local.improvementTips
-      };
-    });
-
-    const overallScore =
-      calibratedResults.length > 0
-        ? Math.round(calibratedResults.reduce((sum, row) => sum + row.score, 0) / calibratedResults.length)
-        : 0;
-
-    res.json({
-      overallScore,
-      overallFeedback: parsed.overallFeedback || 'Interview analysis generated successfully.',
-      results: calibratedResults,
-      source: 'openai'
-    });
+    res.json({ ...parsed, source: 'openai' });
   } catch (error) {
     console.error('Analysis failed:', error);
     res.status(500).json({ error: 'Failed to analyze interview.' });
