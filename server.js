@@ -20,36 +20,60 @@ const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY || 'missing-key' 
 app.use(express.static('public'));
 app.use(express.json({ limit: '4mb' }));
 
-function generateFallbackQuestions(categories = {}) {
-  const bank = {
-    Behavioral: [
-      'Tell me about a time you resolved a conflict within your team.',
-      'Describe a situation where you had to learn something quickly to deliver a project.',
-      'Share an example of a difficult decision you made at work and how you handled it.'
-    ],
-    Technical: [
-      'Walk me through a technically challenging problem you solved and your approach.',
-      'How would you design a scalable solution for a feature with growing usage?',
-      'Explain how you ensure code quality in your day-to-day development process.'
-    ],
-    Situational: [
-      'If priorities changed suddenly right before a deadline, how would you respond?',
-      'How would you handle unclear requirements from multiple stakeholders?',
-      'What would you do if production failed shortly after your deployment?'
-    ],
-    Motivational: [
-      'Why are you interested in this role and this company?',
-      'What motivates you to perform at your best in a team environment?',
-      'Where do you want your career to grow over the next 2-3 years?'
-    ]
+function normalizeLanguage(language = 'English') {
+  const allowed = ['English', 'Dutch', 'French', 'Romanian', 'Russian'];
+  return allowed.includes(language) ? language : 'English';
+}
+
+function getFallbackQuestion(language, category, i) {
+  const templates = {
+    English: {
+      Behavioral: 'Tell me about a time you handled a team conflict successfully.',
+      Technical: 'Describe a technical challenge you solved and your exact approach.',
+      Situational: 'How would you respond if priorities changed right before a deadline?',
+      Motivational: 'Why are you interested in this role and this company?'
+    },
+    Dutch: {
+      Behavioral: 'Vertel over een moment waarop je een teamconflict succesvol oploste.',
+      Technical: 'Beschrijf een technisch probleem dat je hebt opgelost en je aanpak.',
+      Situational: 'Hoe zou je reageren als prioriteiten vlak voor een deadline veranderen?',
+      Motivational: 'Waarom ben je geïnteresseerd in deze rol en dit bedrijf?'
+    },
+    French: {
+      Behavioral: "Parlez-moi d'une situation où vous avez résolu un conflit d'équipe avec succès.",
+      Technical: 'Décrivez un défi technique que vous avez résolu et votre approche précise.',
+      Situational: 'Comment réagiriez-vous si les priorités changeaient juste avant une échéance ?',
+      Motivational: "Pourquoi êtes-vous intéressé(e) par ce poste et cette entreprise ?"
+    },
+    Romanian: {
+      Behavioral: 'Povestește despre o situație în care ai rezolvat cu succes un conflict în echipă.',
+      Technical: 'Descrie o provocare tehnică pe care ai rezolvat-o și abordarea ta.',
+      Situational: 'Cum ai reacționa dacă prioritățile se schimbă chiar înainte de termen?',
+      Motivational: 'De ce ești interesat(ă) de acest rol și de această companie?'
+    },
+    Russian: {
+      Behavioral: 'Расскажите о случае, когда вы успешно разрешили конфликт в команде.',
+      Technical: 'Опишите техническую задачу, которую вы решили, и ваш подход.',
+      Situational: 'Как бы вы отреагировали, если приоритеты изменятся прямо перед дедлайном?',
+      Motivational: 'Почему вас интересуют эта роль и эта компания?'
+    }
   };
 
+  const bank = templates[normalizeLanguage(language)] || templates.English;
+  const variants = [
+    bank[category] || bank.Behavioral,
+    `${bank[category] || bank.Behavioral} ${normalizeLanguage(language) === 'English' ? 'Please include specific actions and outcomes.' : ''}`,
+    `${bank[category] || bank.Behavioral} ${normalizeLanguage(language) === 'English' ? 'Use a clear STAR structure.' : ''}`
+  ];
+  return variants[i % variants.length];
+}
+
+function generateFallbackQuestions(categories = {}, language = 'English') {
   const questions = [];
   Object.entries(categories).forEach(([category, count]) => {
     const wanted = Math.max(0, Number(count) || 0);
     for (let i = 0; i < wanted; i += 1) {
-      const list = bank[category] || [`Give an example response for a ${category} interview question.`];
-      questions.push({ category, question: list[i % list.length] });
+      questions.push({ category, question: getFallbackQuestion(language, category, i) });
     }
   });
 
@@ -134,14 +158,14 @@ function evaluateTranscript(transcript = '') {
 
 app.post('/api/generate-questions', async (req, res) => {
   try {
-    const { resume, jobDescription, categories } = req.body;
+    const { resume, jobDescription, categories, language } = req.body;
 
     if (!resume || !jobDescription || !categories) {
       return res.status(400).json({ error: 'Missing resume, jobDescription, or categories.' });
     }
 
     if (!hasApiKey) {
-      return res.json({ questions: generateFallbackQuestions(categories), source: 'fallback' });
+      return res.json({ questions: generateFallbackQuestions(categories, normalizeLanguage(language)), source: 'fallback' });
     }
 
     const categorySummary = Object.entries(categories)
@@ -159,7 +183,7 @@ app.post('/api/generate-questions', async (req, res) => {
         },
         {
           role: 'user',
-          content: `Create interview questions using the candidate resume and job description.\nCategory counts: ${categorySummary}\nResume:\n${resume}\n\nJob Description:\n${jobDescription}`
+          content: `Create interview questions using the candidate resume and job description.\nCategory counts: ${categorySummary}\nRequired language: ${normalizeLanguage(language)}.\nAll question text must be in ${normalizeLanguage(language)}.\nResume:\n${resume}\n\nJob Description:\n${jobDescription}`
         }
       ]
     });
@@ -171,7 +195,7 @@ app.post('/api/generate-questions', async (req, res) => {
   } catch (error) {
     console.error('Question generation failed:', error);
     res.status(200).json({
-      questions: generateFallbackQuestions(req.body?.categories),
+      questions: generateFallbackQuestions(req.body?.categories, normalizeLanguage(req.body?.language)),
       source: 'fallback',
       warning: 'OpenAI question generation failed; fallback questions were used.'
     });
@@ -180,12 +204,14 @@ app.post('/api/generate-questions', async (req, res) => {
 
 app.post('/api/generate-follow-up', async (req, res) => {
   try {
-    const { category, question, answer } = req.body;
+    const { category, question, answer, language } = req.body;
     if (!category || !question || !answer) return res.status(400).json({ error: 'Missing category, question, or answer.' });
 
     if (!hasApiKey) {
       return res.json({
-        followUpQuestion: `Thanks. Can you go one level deeper: what did you personally do, and what measurable result came from that in this ${category.toLowerCase()} example?`,
+        followUpQuestion: normalizeLanguage(language) === 'English'
+          ? `Thanks. Can you go one level deeper: what did you personally do, and what measurable result came from that in this ${category.toLowerCase()} example?`
+          : `Please go one level deeper in ${normalizeLanguage(language)}: what actions did you personally take and what measurable result did you achieve?`,
         source: 'fallback'
       });
     }
@@ -200,7 +226,7 @@ app.post('/api/generate-follow-up', async (req, res) => {
         },
         {
           role: 'user',
-          content: `Category: ${category}\nOriginal question: ${question}\nCandidate answer: ${answer}`
+          content: `Category: ${category}\nRequired language: ${normalizeLanguage(language)}. Return the follow-up question in ${normalizeLanguage(language)}.\nOriginal question: ${question}\nCandidate answer: ${answer}`
         }
       ]
     });
@@ -210,7 +236,9 @@ app.post('/api/generate-follow-up', async (req, res) => {
   } catch (error) {
     console.error('Follow-up generation failed:', error);
     res.json({
-      followUpQuestion: 'Could you clarify your exact role, key action, and final measurable outcome?',
+      followUpQuestion: normalizeLanguage(req.body?.language) === 'English'
+        ? 'Could you clarify your exact role, key action, and final measurable outcome?'
+        : `Please clarify (in ${normalizeLanguage(req.body?.language)}): your role, key action, and measurable outcome.`,
       source: 'fallback'
     });
   }

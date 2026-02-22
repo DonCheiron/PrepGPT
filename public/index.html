@@ -92,7 +92,18 @@
           <textarea id="job-description" rows="8" placeholder="Or paste the job description text here..."></textarea>
         </div>
 
-        <h3>3) Number of questions per category</h3>
+        <div class="input-block">
+          <label>3) Interview Language</label>
+          <select id="interview-language" class="select-input">
+            <option value="English">English</option>
+            <option value="Dutch">Dutch</option>
+            <option value="French">French</option>
+            <option value="Romanian">Romanian</option>
+            <option value="Russian">Russian</option>
+          </select>
+        </div>
+
+        <h3>4) Number of questions per category</h3>
         <div id="sliders"></div>
 
         <label class="toggle-row">
@@ -191,17 +202,6 @@
         </div>
 
         <div class="viz-grid">
-          <div class="viz-card">
-            <h4>Profile Details</h4>
-            <label>Name</label>
-            <input id="profile-name" type="text" />
-            <label>Headline</label>
-            <input id="profile-headline" type="text" placeholder="Aspiring Product Manager" />
-            <label>Target Role</label>
-            <input id="profile-role" type="text" placeholder="Senior Software Engineer" />
-            <button id="save-profile-btn" class="btn-secondary">Save Profile</button>
-          </div>
-
           <div class="viz-card">
             <h4>Historical Interview Sessions</h4>
             <div id="session-history"></div>

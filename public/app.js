@@ -17,7 +17,8 @@ const state = {
   dynamicFollowUpsEnabled: true,
   generatedFollowUps: 0,
   lastAnalysis: null,
-  currentUser: null
+  currentUser: null,
+  interviewLanguage: 'English'
 };
 
 const authScreen = document.getElementById('auth-screen');
@@ -62,6 +63,7 @@ const resumeFileInput = document.getElementById('resume-file');
 const jdTextarea = document.getElementById('job-description');
 const jdFileInput = document.getElementById('job-description-file');
 const dynamicFollowUpsInput = document.getElementById('dynamic-followups');
+const interviewLanguageInput = document.getElementById('interview-language');
 
 const slidersContainer = document.getElementById('sliders');
 const prepareBtn = document.getElementById('prepare-btn');
@@ -217,9 +219,9 @@ function hydrateProfileInputs() {
   const headline = state.currentUser.headline || '';
   const role = state.currentUser.targetRole || '';
 
-  profileName.value = name;
-  profileHeadline.value = headline;
-  profileRole.value = role;
+  if (profileName) profileName.value = name;
+  if (profileHeadline) profileHeadline.value = headline;
+  if (profileRole) profileRole.value = role;
 
   if (setupProfileName) setupProfileName.value = name;
   if (setupProfileHeadline) setupProfileHeadline.value = headline;
@@ -231,9 +233,9 @@ function hydrateProfileInputs() {
 }
 
 function saveProfile() {
-  const nextName = (setupProfileName?.value || profileName.value).trim();
-  const nextHeadline = (setupProfileHeadline?.value || profileHeadline.value).trim();
-  const nextRole = (setupProfileRole?.value || profileRole.value).trim();
+  const nextName = (setupProfileName?.value || profileName?.value || '').trim();
+  const nextHeadline = (setupProfileHeadline?.value || profileHeadline?.value || '').trim();
+  const nextRole = (setupProfileRole?.value || profileRole?.value || '').trim();
 
   updateCurrentUser((user) => ({
     ...user,
@@ -353,7 +355,7 @@ async function prepareInterview() {
     const response = await fetch('/api/generate-questions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ resume, jobDescription, categories: categoryCounts })
+      body: JSON.stringify({ resume, jobDescription, categories: categoryCounts, language: state.interviewLanguage })
     });
 
     const data = await response.json();
@@ -366,6 +368,7 @@ async function prepareInterview() {
     state.jobDescriptionText = jobDescription;
     state.generatedFollowUps = 0;
     state.dynamicFollowUpsEnabled = Boolean(dynamicFollowUpsInput.checked);
+    state.interviewLanguage = interviewLanguageInput?.value || 'English';
 
     showScreen(instructionScreen);
   } catch (error) {
@@ -380,7 +383,7 @@ async function prepareInterview() {
 function renderCurrentQuestion() {
   const questionObj = state.questions[state.currentIndex];
   questionTitle.textContent = `Question ${state.currentIndex + 1} of ${state.questions.length}`;
-  questionMeta.textContent = `Category: ${questionObj.category}${questionObj.isFollowUp ? ' • Adaptive follow-up' : ''}`;
+  questionMeta.textContent = `Category: ${questionObj.category}${questionObj.isFollowUp ? ' • Adaptive follow-up' : ''} • Language: ${state.interviewLanguage}`;
   currentQuestion.textContent = questionObj.question;
 
   answerTranscript.value = '';
@@ -456,7 +459,8 @@ async function maybeInsertFollowUp(questionObj, transcript) {
         jobDescription: state.jobDescriptionText,
         category: questionObj.category,
         question: questionObj.question,
-        answer: transcript
+        answer: transcript,
+        language: state.interviewLanguage
       })
     });
     const data = await response.json();
@@ -733,7 +737,7 @@ showSignupBtn.addEventListener('click', () => showAuthPanel('signup'));
 loginBtn.addEventListener('click', handleLogin);
 signupBtn.addEventListener('click', handleSignup);
 logoutBtn.addEventListener('click', logout);
-saveProfileBtn.addEventListener('click', saveProfile);
+if (saveProfileBtn) saveProfileBtn.addEventListener('click', saveProfile);
 if (setupSaveProfileBtn) setupSaveProfileBtn.addEventListener('click', saveProfile);
 
 prepareBtn.addEventListener('click', prepareInterview);

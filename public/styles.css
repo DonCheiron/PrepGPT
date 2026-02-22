@@ -163,6 +163,16 @@ input[type='file'] {
 
 textarea { padding: 0.76rem; }
 
+.select-input {
+  width: 100%;
+  border: 1px solid #cfd7eb;
+  border-radius: 12px;
+  padding: 0.72rem;
+  font-family: inherit;
+  font-size: 0.95rem;
+  background: #fff;
+}
+
 .slider-group { margin-bottom: 0.8rem; }
 .slider-label { display: flex; justify-content: space-between; margin-bottom: 0.3rem; }
 input[type='range'] { width: 100%; }
