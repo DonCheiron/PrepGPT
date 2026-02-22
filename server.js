@@ -80,6 +80,60 @@ function generateFallbackQuestions(categories = {}, language = 'English') {
   return questions;
 }
 
+
+function looksLikeLanguage(text = '', language = 'English') {
+  const lower = String(text).toLowerCase();
+  if (!lower.trim()) return false;
+
+  const languageSignals = {
+    English: [' the ', ' and ', ' with ', ' your ', ' about ', ' tell me '],
+    Dutch: [' de ', ' het ', ' een ', ' je ', ' jouw ', ' wat ', ' waarom '],
+    French: [' le ', ' la ', ' les ', ' des ', ' avec ', ' pourquoi ', ' vous '],
+    Romanian: [' și ', ' este ', ' care ', ' pentru ', ' cum ', ' de ce ', ' într-'],
+    Russian: [' как ', ' что ', ' это ', ' для ', ' почему ', ' вы ', ' когда ']
+  };
+
+  const selected = normalizeLanguage(language);
+  const selectedHits = (languageSignals[selected] || []).reduce((sum, token) => sum + (lower.includes(token) ? 1 : 0), 0);
+  const englishHits = (languageSignals.English || []).reduce((sum, token) => sum + (lower.includes(token) ? 1 : 0), 0);
+
+  if (selected === 'English') return englishHits >= 1;
+  return selectedHits >= 1 && selectedHits >= englishHits;
+}
+
+async function forceQuestionsLanguage(questions = [], language = 'English') {
+  const selected = normalizeLanguage(language);
+  if (!Array.isArray(questions) || questions.length === 0 || selected === 'English' || !hasApiKey) {
+    return questions;
+  }
+
+  const mismatched = questions.some((q) => !looksLikeLanguage(q?.question || '', selected));
+  if (!mismatched) return questions;
+
+  const response = await client.responses.create({
+    model: 'gpt-4.1-mini',
+    input: [
+      {
+        role: 'system',
+        content:
+          'Rewrite interview questions to the requested language. Keep intent and difficulty unchanged. Return ONLY JSON as {"questions":[{"category":"Behavioral|Technical|Situational|Motivational","question":"..."}]}. Every question must be entirely in the requested language.'
+      },
+      {
+        role: 'user',
+        content: `Requested language: ${selected}. Rewrite these questions and return same count and categories:
+${JSON.stringify(questions)}`
+      }
+    ]
+  });
+
+  const parsed = JSON.parse(response.output_text);
+  if (!Array.isArray(parsed.questions) || parsed.questions.length !== questions.length) {
+    return questions;
+  }
+
+  return parsed.questions;
+}
+
 function extractHighlights(transcript = '') {
   const lower = transcript.toLowerCase();
   const metricMatch = transcript.match(/\b\d+(?:\.\d+)?\s?(?:%|ms|sec|seconds|minutes|hours|days|weeks|months|users|customers|tickets|bugs|k|m)\b/gi) || [];
@@ -191,7 +245,8 @@ app.post('/api/generate-questions', async (req, res) => {
     const parsed = JSON.parse(response.output_text);
     if (!Array.isArray(parsed.questions)) return res.status(500).json({ error: 'Model response did not include a questions array.' });
 
-    res.json({ questions: parsed.questions, source: 'openai' });
+    const normalizedQuestions = await forceQuestionsLanguage(parsed.questions, language);
+    res.json({ questions: normalizedQuestions, source: 'openai' });
   } catch (error) {
     console.error('Question generation failed:', error);
     res.status(200).json({
