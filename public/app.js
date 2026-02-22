@@ -638,7 +638,12 @@ async function analyzeInterview() {
     const response = await fetch('/api/analyze-interview', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ resume: state.resumeText, jobDescription: state.jobDescriptionText, qaPairs: state.answers })
+      body: JSON.stringify({
+        resume: state.resumeText,
+        jobDescription: state.jobDescriptionText,
+        qaPairs: state.answers,
+        language: state.interviewLanguage
+      })
     });
 
     const data = await response.json();

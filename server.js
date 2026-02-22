@@ -179,7 +179,7 @@ app.post('/api/generate-questions', async (req, res) => {
         {
           role: 'system',
           content:
-            'You are an expert interview coach. Return only valid JSON with this exact structure: {"questions":[{"category":"Behavioral|Technical|Situational|Motivational","question":"..."}]}. Do not include markdown or extra text.'
+            'You are an expert interview coach. Return only valid JSON with this exact structure: {"questions":[{"category":"Behavioral|Technical|Situational|Motivational","question":"..."}]}. Do not include markdown or extra text. IMPORTANT: every question text must be in the requested language exactly.'
         },
         {
           role: 'user',
@@ -222,7 +222,7 @@ app.post('/api/generate-follow-up', async (req, res) => {
         {
           role: 'system',
           content:
-            'You are an interviewer. Ask exactly one short follow-up question based on the candidate answer. Focus on missing detail, ownership, trade-offs, or measurable outcomes. Return only JSON: {"followUpQuestion":"..."}.'
+            'You are an interviewer. Ask exactly one short follow-up question based on the candidate answer. Focus on missing detail, ownership, trade-offs, or measurable outcomes. Return only JSON: {"followUpQuestion":"..."}. IMPORTANT: followUpQuestion must be written in the requested language only.'
         },
         {
           role: 'user',
@@ -275,7 +275,7 @@ function makeNextStepPlan(results = []) {
 
 app.post('/api/analyze-interview', async (req, res) => {
   try {
-    const { resume, jobDescription, qaPairs } = req.body;
+    const { resume, jobDescription, qaPairs, language } = req.body;
     if (!resume || !jobDescription || !Array.isArray(qaPairs) || qaPairs.length === 0) {
       return res.status(400).json({ error: 'Missing required interview data.' });
     }
@@ -297,12 +297,31 @@ app.post('/api/analyze-interview', async (req, res) => {
       });
 
       const overallScore = Math.round(results.reduce((sum, item) => sum + item.score, 0) / results.length);
+      const selectedLanguage = normalizeLanguage(language);
+      const fallbackOverallFeedback =
+        selectedLanguage === 'Dutch'
+          ? (overallScore >= 75
+              ? 'Sterke algemene prestatie. Houd je antwoorden beknopt en onderbouwd met bewijs.'
+              : 'Je interview heeft meer structuur en meetbare impact per antwoord nodig.')
+          : selectedLanguage === 'French'
+            ? (overallScore >= 75
+                ? 'Performance globale solide. Gardez des réponses concises et appuyées par des preuves.'
+                : 'Votre entretien a besoin de plus de structure et d\'impact mesurable dans chaque réponse.')
+            : selectedLanguage === 'Romanian'
+              ? (overallScore >= 75
+                  ? 'Performanță generală solidă. Menține răspunsurile concise și susținute de dovezi.'
+                  : 'Interviul tău are nevoie de mai multă structură și impact măsurabil în fiecare răspuns.')
+              : selectedLanguage === 'Russian'
+                ? (overallScore >= 75
+                    ? 'Хороший общий результат. Держите ответы краткими и подкрепляйте фактами.'
+                    : 'Вашему интервью нужна более чёткая структура и измеримый результат в каждом ответе.')
+                : overallScore >= 75
+                  ? 'Solid overall performance. Keep answers concise and evidence-backed.'
+                  : 'Your interview needs stronger structure and measurable impact in each response.';
+
       return res.json({
         overallScore,
-        overallFeedback:
-          overallScore >= 75
-            ? 'Solid overall performance. Keep answers concise and evidence-backed.'
-            : 'Your interview needs stronger structure and measurable impact in each response.',
+        overallFeedback: fallbackOverallFeedback,
         nextStepPlan: makeNextStepPlan(results),
         results,
         source: 'fallback'
@@ -315,11 +334,11 @@ app.post('/api/analyze-interview', async (req, res) => {
         {
           role: 'system',
           content:
-            'You are a strict senior interview evaluator. Be realistic and critical. Most average answers should score between 45 and 70. Return only valid JSON with this exact format: {"overallScore": number,"overallFeedback": string,"results":[{"category":string,"question":string,"transcript":string,"score":number,"feedback":string,"improvementTips":[string]}]}. Scores are 0-100 and must clearly reflect answer quality.'
+            'You are a strict senior interview evaluator. Be realistic and critical. Most average answers should score between 45 and 70. Return only valid JSON with this exact format: {"overallScore": number,"overallFeedback": string,"results":[{"category":string,"question":string,"transcript":string,"score":number,"feedback":string,"improvementTips":[string]}]}. Scores are 0-100 and must clearly reflect answer quality. IMPORTANT: all user-facing text fields (overallFeedback, feedback, improvementTips) must be entirely in the requested language.'
         },
         {
           role: 'user',
-          content: `Evaluate this interview simulation.\nResume:\n${resume}\n\nJob Description:\n${jobDescription}\n\nInterview Q&A:\n${JSON.stringify(qaPairs, null, 2)}`
+          content: `Evaluate this interview simulation.\nRequired language: ${normalizeLanguage(language)}. All user-facing text must be in ${normalizeLanguage(language)}.\nResume:\n${resume}\n\nJob Description:\n${jobDescription}\n\nInterview Q&A:\n${JSON.stringify(qaPairs, null, 2)}`
         }
       ]
     });
