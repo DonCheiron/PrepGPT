@@ -101,6 +101,40 @@ function looksLikeLanguage(text = '', language = 'English') {
   return selectedHits >= 1 && selectedHits >= englishHits;
 }
 
+async function translateSingleQuestion(questionObj, language, index = 0) {
+  const selected = normalizeLanguage(language);
+  if (selected === 'English' || !hasApiKey) return questionObj;
+
+  try {
+    const response = await client.responses.create({
+      model: 'gpt-4.1-mini',
+      input: [
+        {
+          role: 'system',
+          content:
+            'Translate the provided interview question into the requested language. Keep meaning and difficulty. Return ONLY JSON: {"category":"Behavioral|Technical|Situational|Motivational","question":"..."}. The question must be entirely in the requested language.'
+        },
+        {
+          role: 'user',
+          content: `Requested language: ${selected}. Category: ${questionObj.category}. Source question: ${questionObj.question}`
+        }
+      ]
+    });
+
+    const parsed = JSON.parse(response.output_text);
+    if (parsed?.question && looksLikeLanguage(parsed.question, selected)) {
+      return { category: questionObj.category, question: parsed.question };
+    }
+  } catch (error) {
+    console.warn('Single-question translation failed:', error?.message || error);
+  }
+
+  return {
+    category: questionObj.category,
+    question: getFallbackQuestion(selected, questionObj.category, index)
+  };
+}
+
 async function forceQuestionsLanguage(questions = [], language = 'English') {
   const selected = normalizeLanguage(language);
   if (!Array.isArray(questions) || questions.length === 0 || selected === 'English' || !hasApiKey) {
@@ -110,28 +144,44 @@ async function forceQuestionsLanguage(questions = [], language = 'English') {
   const mismatched = questions.some((q) => !looksLikeLanguage(q?.question || '', selected));
   if (!mismatched) return questions;
 
-  const response = await client.responses.create({
-    model: 'gpt-4.1-mini',
-    input: [
-      {
-        role: 'system',
-        content:
-          'Rewrite interview questions to the requested language. Keep intent and difficulty unchanged. Return ONLY JSON as {"questions":[{"category":"Behavioral|Technical|Situational|Motivational","question":"..."}]}. Every question must be entirely in the requested language.'
-      },
-      {
-        role: 'user',
-        content: `Requested language: ${selected}. Rewrite these questions and return same count and categories:
+  let rewritten = questions;
+  try {
+    const response = await client.responses.create({
+      model: 'gpt-4.1-mini',
+      input: [
+        {
+          role: 'system',
+          content:
+            'Rewrite interview questions to the requested language. Keep intent and difficulty unchanged. Return ONLY JSON as {"questions":[{"category":"Behavioral|Technical|Situational|Motivational","question":"..."}]}. Every question must be entirely in the requested language.'
+        },
+        {
+          role: 'user',
+          content: `Requested language: ${selected}. Rewrite these questions and return same count and categories:
 ${JSON.stringify(questions)}`
-      }
-    ]
-  });
+        }
+      ]
+    });
 
-  const parsed = JSON.parse(response.output_text);
-  if (!Array.isArray(parsed.questions) || parsed.questions.length !== questions.length) {
-    return questions;
+    const parsed = JSON.parse(response.output_text);
+    if (Array.isArray(parsed.questions) && parsed.questions.length === questions.length) {
+      rewritten = parsed.questions;
+    }
+  } catch (error) {
+    console.warn('Batch language rewrite failed:', error?.message || error);
   }
 
-  return parsed.questions;
+  const normalized = [];
+  for (let i = 0; i < rewritten.length; i += 1) {
+    const q = rewritten[i];
+    if (looksLikeLanguage(q?.question || '', selected)) {
+      normalized.push(q);
+      continue;
+    }
+    const translated = await translateSingleQuestion(q, selected, i);
+    normalized.push(translated);
+  }
+
+  return normalized;
 }
 
 function extractHighlights(transcript = '') {
